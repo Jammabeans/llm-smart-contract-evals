@@ -1,0 +1,6 @@
+run_id,model_name,prompt_style,case_id,detection_score,localization_score,exploit_reasoning_score,severity_score,fix_score,failure_mode,evaluator_notes
+run_001,gpt-4o-mini,baseline,case_001,2,2,1,2,1,no_major_failure,Detected auth issue and gave workable fix.
+run_001,gpt-4o-mini,baseline,case_002,1,1,1,1,1,vague_suspicion,Not confident but flagged accounting concerns.
+run_002,claude-3.5-sonnet,senior_auditor_concise,case_001,2,2,2,2,2,no_major_failure,Strong and concise finding.
+run_002,claude-3.5-sonnet,senior_auditor_concise,case_003,2,1,2,1,1,right_vulnerability_wrong_severity,Right DoS vector but severity undercalled.
+
