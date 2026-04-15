@@ -8,23 +8,25 @@ Many LLM smart-contract evaluations are synthetic or underspecified. This reposi
 
 ## v0.1 scope
 
-This version only includes the scaffold:
+This version includes:
 
-- benchmark case schema and seed cases
-- minimal vulnerable Solidity snippets
-- prompt-construction utilities
-- case validation script
-- basic tests for case integrity and prompt generation
+- benchmark schema and seed cases
+- prompt builder and case loading utilities
+- case validation tooling
+- raw evaluation runner for Anthropic (JSONL + run manifest)
+- manual scoring rubric
+- score summarization tooling
 
-Out of scope in v0.1:
+v0.1 does **not** include:
 
-- model/provider API integrations
-- scoring/leaderboard logic
-- web app or agent framework
+- automatic grading of free-form model outputs
+- many-model benchmarking infrastructure
+- judge-model scoring
+- web UI / agent framework
 
 ## Current status
 
-Scaffold + schema + seed cases.
+Working v0.1 baseline: seed benchmark cases, prompt generation, Anthropic raw-run execution, and manual scoring/summarization workflow.
 
 ## Quick start
 
@@ -33,4 +35,33 @@ python -m pip install -e .[dev]
 pytest
 python scripts/validate_cases.py
 ```
+
+## Run an evaluation
+
+Set your Anthropic API key:
+
+```bash
+export ANTHROPIC_API_KEY="your_api_key_here"
+```
+
+Dry run (no API calls; writes placeholder raw records):
+
+```bash
+python scripts/run_eval.py \
+  --model claude-3-5-haiku-latest \
+  --prompt-style baseline \
+  --output results/raw/dry_run.jsonl \
+  --dry-run
+```
+
+Real run (calls Anthropic Messages API and stores raw outputs):
+
+```bash
+python scripts/run_eval.py \
+  --model claude-3-5-haiku-latest \
+  --prompt-style senior_auditor_concise \
+  --output results/raw/run_001.jsonl
+```
+
+v0.1 stores raw model outputs for later analysis. Scoring remains a separate manual workflow documented in [`benchmark/scoring.md`](benchmark/scoring.md).
 
