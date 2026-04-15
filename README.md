@@ -65,3 +65,33 @@ python scripts/run_eval.py \
 
 v0.1 stores raw model outputs for later analysis. Scoring remains a separate manual workflow documented in [`benchmark/scoring.md`](benchmark/scoring.md).
 
+## Manual scoring workflow
+
+1) Run eval and collect raw JSONL outputs:
+
+```bash
+python scripts/run_eval.py \
+  --model claude-3-5-haiku-latest \
+  --prompt-style baseline \
+  --output results/raw/run_001.jsonl
+```
+
+2) Initialize a blank scoring sheet (only `status == "ok"` rows are included):
+
+```bash
+python scripts/init_scoring_sheet.py \
+  --raw-jsonl results/raw/run_001.jsonl \
+  --output-csv results/manual/run_001_scores_blank.csv
+```
+
+3) Manually fill in rubric fields in the CSV (`*_score`, `failure_mode`, `evaluator_notes`).
+
+4) Build case-level and summary results tables:
+
+```bash
+python scripts/build_results_tables.py \
+  --scores-csv results/manual/run_001_scores_filled.csv \
+  --case-output-csv results/tables/run_001_case_results.csv \
+  --summary-output-csv results/tables/run_001_summary.csv
+```
+
