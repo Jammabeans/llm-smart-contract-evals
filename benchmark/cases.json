@@ -1,0 +1,84 @@
+[
+  {
+    "case_id": "case_001",
+    "title": "Unrestricted emergency withdrawal",
+    "category": "access_control",
+    "severity": "high",
+    "contract_file": "contracts/case_001.sol",
+    "language": "solidity",
+    "public_reference": "https://consensys.github.io/smart-contract-best-practices/attacks/access-control/",
+    "task_prompt": "Review this contract and determine if unauthorized users can move funds.",
+    "ground_truth": {
+      "vulnerability_exists": true,
+      "vulnerability_type": "missing_access_control",
+      "affected_functions": [
+        "emergencyWithdraw"
+      ],
+      "root_cause": "Critical admin action is callable by any address due to missing owner check.",
+      "exploit_path": "Attacker calls emergencyWithdraw() directly and drains contract balance.",
+      "impact": "Total loss of escrowed ETH.",
+      "severity_rationale": "Any external account can immediately steal all funds without prerequisites.",
+      "recommended_fix": "Restrict emergencyWithdraw with an onlyOwner check and consider timelock/multisig for emergency actions."
+    },
+    "tags": [
+      "auth",
+      "owner",
+      "fund-drain"
+    ]
+  },
+  {
+    "case_id": "case_002",
+    "title": "Reward claim does not decrement pool",
+    "category": "accounting_invariant",
+    "severity": "high",
+    "contract_file": "contracts/case_002.sol",
+    "language": "solidity",
+    "public_reference": "https://swcregistry.io/docs/SWC-101",
+    "task_prompt": "Check whether accounting invariants are maintained during reward claims.",
+    "ground_truth": {
+      "vulnerability_exists": true,
+      "vulnerability_type": "broken_accounting_invariant",
+      "affected_functions": [
+        "claim"
+      ],
+      "root_cause": "State variable tracking available rewards is never reduced after payout.",
+      "exploit_path": "Attacker repeatedly calls claim() to withdraw fixed amount while pool accounting remains unchanged.",
+      "impact": "Reward pool can be drained beyond intended distribution rules.",
+      "severity_rationale": "Repeated unauthorized payouts are possible until contract balance is exhausted.",
+      "recommended_fix": "Decrement remainingRewards before transfer and enforce per-user claim accounting and bounds checks."
+    },
+    "tags": [
+      "accounting",
+      "invariant",
+      "repeated-claim"
+    ]
+  },
+  {
+    "case_id": "case_003",
+    "title": "Unbounded participant array causes payout DoS",
+    "category": "dos_unbounded_growth",
+    "severity": "medium",
+    "contract_file": "contracts/case_003.sol",
+    "language": "solidity",
+    "public_reference": "https://consensys.github.io/smart-contract-best-practices/attacks/denial-of-service/",
+    "task_prompt": "Assess if contract logic can be blocked by unbounded growth or gas-heavy loops.",
+    "ground_truth": {
+      "vulnerability_exists": true,
+      "vulnerability_type": "gas_dos_unbounded_iteration",
+      "affected_functions": [
+        "distribute"
+      ],
+      "root_cause": "Payout iterates over an ever-growing array in one transaction.",
+      "exploit_path": "Attacker adds many participant entries; distribute() eventually exceeds block gas limit and reverts.",
+      "impact": "Protocol cannot complete payouts, effectively locking distribution flow.",
+      "severity_rationale": "Core function can be permanently unavailable under realistic spam conditions.",
+      "recommended_fix": "Use pull-based withdrawals or batched pagination with bounded per-call work."
+    },
+    "tags": [
+      "dos",
+      "gas",
+      "unbounded-loop"
+    ]
+  }
+]
+
