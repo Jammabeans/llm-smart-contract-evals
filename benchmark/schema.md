@@ -10,7 +10,9 @@ Each entry in `benchmark/cases.json` is a single benchmark case object.
 - `severity` (string): expected severity label (`low`/`medium`/`high`/`critical`)
 - `contract_file` (string): path to Solidity source file from repo root
 - `language` (string): language of target contract (`solidity`)
-- `public_reference` (string): external reference URL
+- `public_reference` (string):
+  - exact public finding source when available, or
+  - clearly labeled public vulnerability reference when the case is a minimized/sanitized reconstruction
 - `task_prompt` (string): short case-specific audit task text
 - `ground_truth` (object): expected security finding details
 - `tags` (array of strings): search/filter labels

@@ -10,6 +10,7 @@ def test_build_prompt_baseline_includes_contract_code() -> None:
     prompt = build_prompt(case, prompt_style="baseline")
 
     assert "Vulnerability exists? (yes/no)" in prompt
+    assert "Affected function(s) or logic" in prompt
     assert "```solidity" in prompt
 
     expected_snippet = Path(case["contract_file"]).read_text(encoding="utf-8").strip()
@@ -21,6 +22,7 @@ def test_build_prompt_senior_auditor_concise_includes_contract_code() -> None:
     prompt = build_prompt(case, prompt_style="senior_auditor_concise")
 
     assert "senior smart-contract auditor" in prompt
+    assert "Affected function(s) or logic" in prompt
     assert "Severity" in prompt
 
     expected_snippet = Path(case["contract_file"]).read_text(encoding="utf-8").strip()

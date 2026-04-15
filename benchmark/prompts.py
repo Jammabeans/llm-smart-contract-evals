@@ -27,14 +27,14 @@ def build_prompt(case: dict, prompt_style: str = "baseline") -> str:
     if prompt_style == "baseline":
         header = (
             "You are auditing a Solidity smart contract for security issues.\n"
-            "Determine whether a vulnerability exists. If yes, identify the vulnerability type, "
-            "severity, exploit path, and remediation."
+            "Determine whether a vulnerability exists and localize it to the specific function(s) "
+            "or logic path involved."
         )
     else:
         header = (
             "Act as a senior smart-contract auditor. Be concise and evidence-driven.\n"
-            "State whether a vulnerability exists, then provide severity, exploit explanation, "
-            "and a practical fix."
+            "State whether a vulnerability exists, localize the issue to affected function(s) or "
+            "logic, then provide severity, exploit explanation, and a practical fix."
         )
 
     prompt = (
@@ -46,9 +46,10 @@ def build_prompt(case: dict, prompt_style: str = "baseline") -> str:
         "Required output:\n"
         "1) Vulnerability exists? (yes/no)\n"
         "2) Vulnerability type\n"
-        "3) Severity\n"
-        "4) Exploit explanation\n"
-        "5) Recommended remediation\n\n"
+        "3) Affected function(s) or logic\n"
+        "4) Severity\n"
+        "5) Exploit explanation\n"
+        "6) Recommended remediation\n\n"
         "Solidity code:\n"
         "```solidity\n"
         f"{contract_code}\n"

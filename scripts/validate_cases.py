@@ -31,9 +31,12 @@ REQUIRED_GROUND_TRUTH_FIELDS = {
     "recommended_fix",
 }
 
+VALID_SEVERITIES = {"low", "medium", "high", "critical"}
+
 
 def validate() -> list[str]:
     errors: list[str] = []
+    seen_case_ids: set[str] = set()
 
     if not CASES_PATH.exists():
         return [f"missing file: {CASES_PATH}"]
@@ -55,6 +58,24 @@ def validate() -> list[str]:
         if missing:
             errors.append(f"{label}: missing required fields: {sorted(missing)}")
 
+        case_id = case.get("case_id")
+        if isinstance(case_id, str):
+            if case_id in seen_case_ids:
+                errors.append(f"{label}: duplicate case_id: {case_id}")
+            seen_case_ids.add(case_id)
+        else:
+            errors.append(f"{label}: case_id must be a string")
+
+        severity = case.get("severity")
+        if not isinstance(severity, str) or severity not in VALID_SEVERITIES:
+            errors.append(
+                f"{label}: severity must be one of {sorted(VALID_SEVERITIES)}"
+            )
+
+        tags = case.get("tags")
+        if not isinstance(tags, list):
+            errors.append(f"{label}: tags must be a list")
+
         ground_truth = case.get("ground_truth")
         if not isinstance(ground_truth, dict):
             errors.append(f"{label}: ground_truth must be an object")
@@ -62,6 +83,10 @@ def validate() -> list[str]:
             gt_missing = REQUIRED_GROUND_TRUTH_FIELDS - set(ground_truth.keys())
             if gt_missing:
                 errors.append(f"{label}: missing ground_truth fields: {sorted(gt_missing)}")
+
+            affected_functions = ground_truth.get("affected_functions")
+            if not isinstance(affected_functions, list):
+                errors.append(f"{label}: ground_truth.affected_functions must be a list")
 
         contract_file = case.get("contract_file")
         if isinstance(contract_file, str):

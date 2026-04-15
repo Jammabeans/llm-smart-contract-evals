@@ -6,7 +6,7 @@
     "severity": "high",
     "contract_file": "contracts/case_001.sol",
     "language": "solidity",
-    "public_reference": "https://consensys.github.io/smart-contract-best-practices/attacks/access-control/",
+    "public_reference": "Public vulnerability reference (pattern, not exact source): Parity multisig incident postmortem - https://www.parity.io/blog/security-alert-2",
     "task_prompt": "Review this contract and determine if unauthorized users can move funds.",
     "ground_truth": {
       "vulnerability_exists": true,
@@ -33,7 +33,7 @@
     "severity": "high",
     "contract_file": "contracts/case_002.sol",
     "language": "solidity",
-    "public_reference": "https://swcregistry.io/docs/SWC-101",
+    "public_reference": "Public vulnerability reference (pattern, not exact source): Cover Protocol exploit postmortem (logic/accounting failure) - https://rekt.news/cover-rekt/",
     "task_prompt": "Check whether accounting invariants are maintained during reward claims.",
     "ground_truth": {
       "vulnerability_exists": true,
@@ -60,7 +60,7 @@
     "severity": "medium",
     "contract_file": "contracts/case_003.sol",
     "language": "solidity",
-    "public_reference": "https://consensys.github.io/smart-contract-best-practices/attacks/denial-of-service/",
+    "public_reference": "Public vulnerability reference (pattern, not exact source): Akutars contract lock incident postmortem (DoS-style lockup risk) - https://rekt.news/akutars-rekt/",
     "task_prompt": "Assess if contract logic can be blocked by unbounded growth or gas-heavy loops.",
     "ground_truth": {
       "vulnerability_exists": true,
