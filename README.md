@@ -10,7 +10,7 @@ Many LLM smart-contract evaluations are synthetic or underspecified. This reposi
 
 This version includes:
 
-- benchmark schema and seed cases
+- benchmark schema and 7 public-audit-derived cases
 - prompt builder and case loading utilities
 - case validation tooling
 - raw evaluation runner for Anthropic (JSONL + run manifest)
@@ -26,7 +26,8 @@ v0.1 does **not** include:
 
 ## Current status
 
-Working v0.1 baseline: seed benchmark cases, prompt generation, Anthropic raw-run execution, and manual scoring/summarization workflow.
+v0.1 currently includes 7 benchmark cases with explicit provenance labels.
+Cases are either exact excerpts, minimized reconstructions, or sanitized variants based on public findings, and are intentionally simplified for reproducibility while preserving the core vulnerability pattern.
 
 ## Quick start
 

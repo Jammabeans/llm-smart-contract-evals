@@ -34,7 +34,7 @@ VALID_SEVERITIES = {"low", "medium", "high", "critical"}
 
 def test_cases_have_required_fields_and_contract_files_exist() -> None:
     cases = load_cases("benchmark/cases.json")
-    assert len(cases) == 3
+    assert len(cases) == 7
     case_ids: set[str] = set()
 
     for case in cases:

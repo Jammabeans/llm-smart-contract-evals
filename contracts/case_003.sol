@@ -1,19 +1,31 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-contract Case003Distributor {
-    address[] public participants;
+interface IWETHCase003 {
+    function deposit() external payable;
+}
 
-    function join() external {
-        participants.push(msg.sender);
+contract Case003BorrowLiquidation {
+    IWETHCase003 public weth;
+
+    struct DepositDetail {
+        uint256 depositedAmountInETH;
     }
 
-    // VULNERABLE: unbounded loop can exceed gas limit as participants grows.
-    function distribute() external payable {
-        uint256 each = msg.value / participants.length;
-        for (uint256 i = 0; i < participants.length; i++) {
-            payable(participants[i]).transfer(each);
-        }
+    mapping(address => DepositDetail) public depositDetail;
+
+    constructor(IWETHCase003 _weth) {
+        weth = _weth;
+    }
+
+    function seedPosition(address user, uint256 depositedAmountInETH) external {
+        depositDetail[user] = DepositDetail({depositedAmountInETH: depositedAmountInETH});
+    }
+
+    // VULNERABLE: assumes contract has enough native ETH to wrap and can revert.
+    function liquidationType2(address user) external {
+        uint256 amount = depositDetail[user].depositedAmountInETH / 2;
+        weth.deposit{value: amount}();
     }
 }
 

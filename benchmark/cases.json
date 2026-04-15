@@ -1,83 +1,192 @@
 [
   {
-    "case_id": "case_001",
-    "title": "Unrestricted emergency withdrawal",
-    "category": "access_control",
-    "severity": "high",
-    "contract_file": "contracts/case_001.sol",
-    "language": "solidity",
-    "public_reference": "Public vulnerability reference (pattern, not exact source): Parity multisig incident postmortem - https://www.parity.io/blog/security-alert-2",
-    "task_prompt": "Review this contract and determine if unauthorized users can move funds.",
-    "ground_truth": {
-      "vulnerability_exists": true,
-      "vulnerability_type": "missing_access_control",
-      "affected_functions": [
-        "emergencyWithdraw"
-      ],
-      "root_cause": "Critical admin action is callable by any address due to missing owner check.",
-      "exploit_path": "Attacker calls emergencyWithdraw() directly and drains contract balance.",
-      "impact": "Total loss of escrowed ETH.",
-      "severity_rationale": "Any external account can immediately steal all funds without prerequisites.",
-      "recommended_fix": "Restrict emergencyWithdraw with an onlyOwner check and consider timelock/multisig for emergency actions."
-    },
-    "tags": [
-      "auth",
-      "owner",
-      "fund-drain"
-    ]
-  },
-  {
     "case_id": "case_002",
-    "title": "Reward claim does not decrement pool",
+    "title": "Combined-interest check with single-bucket subtraction underflows",
     "category": "accounting_invariant",
     "severity": "high",
     "contract_file": "contracts/case_002.sol",
     "language": "solidity",
-    "public_reference": "Public vulnerability reference (pattern, not exact source): Cover Protocol exploit postmortem (logic/accounting failure) - https://rekt.news/cover-rekt/",
-    "task_prompt": "Check whether accounting invariants are maintained during reward claims.",
+    "public_reference": "https://github.com/sherlock-audit/2024-11-autonomint-judging/issues/228",
+    "task_prompt": "Check whether withdraw logic correctly handles combined interest balances without underflowing a single accounting bucket.",
     "ground_truth": {
       "vulnerability_exists": true,
-      "vulnerability_type": "broken_accounting_invariant",
+      "vulnerability_type": "underflow_from_mismatched_interest_accounting",
       "affected_functions": [
-        "claim"
+        "withdrawInterest"
       ],
-      "root_cause": "State variable tracking available rewards is never reduced after payout.",
-      "exploit_path": "Attacker repeatedly calls claim() to withdraw fixed amount while pool accounting remains unchanged.",
-      "impact": "Reward pool can be drained beyond intended distribution rules.",
-      "severity_rationale": "Repeated unauthorized payouts are possible until contract balance is exhausted.",
-      "recommended_fix": "Decrement remainingRewards before transfer and enforce per-user claim accounting and bounds checks."
+      "root_cause": "Precondition checks amount against totalInterest + totalInterestFromLiquidation but subtraction is applied only to totalInterest.",
+      "exploit_path": "When amount exceeds totalInterest but is still <= combined total, subtraction from totalInterest underflows and reverts.",
+      "impact": "Valid withdrawals can fail, locking otherwise withdrawable interest.",
+      "severity_rationale": "Core interest-withdrawal path can revert under realistic balance splits, blocking expected treasury operations.",
+      "recommended_fix": "Subtract proportionally or in sequence across both buckets, or compute available source before mutating each balance."
     },
     "tags": [
       "accounting",
-      "invariant",
-      "repeated-claim"
+      "underflow",
+      "interest-buckets"
     ]
   },
   {
     "case_id": "case_003",
-    "title": "Unbounded participant array causes payout DoS",
-    "category": "dos_unbounded_growth",
+    "title": "Liquidation wraps ETH without ensuring native balance",
+    "category": "broken_assumption_invariant_mismatch",
     "severity": "medium",
     "contract_file": "contracts/case_003.sol",
     "language": "solidity",
-    "public_reference": "Public vulnerability reference (pattern, not exact source): Akutars contract lock incident postmortem (DoS-style lockup risk) - https://rekt.news/akutars-rekt/",
-    "task_prompt": "Assess if contract logic can be blocked by unbounded growth or gas-heavy loops.",
+    "public_reference": "Minimized reconstruction based on public finding: https://github.com/sherlock-audit/2024-11-autonomint-judging/issues/235",
+    "task_prompt": "Assess whether liquidation assumes native ETH is already present before attempting WETH wrapping.",
     "ground_truth": {
       "vulnerability_exists": true,
-      "vulnerability_type": "gas_dos_unbounded_iteration",
+      "vulnerability_type": "insufficient_native_balance_for_weth_wrap",
       "affected_functions": [
-        "distribute"
+        "liquidationType2"
       ],
-      "root_cause": "Payout iterates over an ever-growing array in one transaction.",
-      "exploit_path": "Attacker adds many participant entries; distribute() eventually exceeds block gas limit and reverts.",
-      "impact": "Protocol cannot complete payouts, effectively locking distribution flow.",
-      "severity_rationale": "Core function can be permanently unavailable under realistic spam conditions.",
-      "recommended_fix": "Use pull-based withdrawals or batched pagination with bounded per-call work."
+      "root_cause": "Function computes an ETH amount and calls weth.deposit{value: amount}() without guaranteeing the contract holds that ETH.",
+      "exploit_path": "Liquidation path executes with insufficient contract ETH; WETH deposit reverts; liquidation aborts.",
+      "impact": "Undercollateralized positions may remain unliquidated when liquidation path fails.",
+      "severity_rationale": "Medium because failure is conditional on funding state, but it blocks critical risk-management operations.",
+      "recommended_fix": "Ensure ETH funding before wrapping, or source liquidity safely and fail fast with explicit balance checks."
     },
     "tags": [
-      "dos",
-      "gas",
-      "unbounded-loop"
+      "liquidation",
+      "weth",
+      "native-balance"
+    ]
+  },
+  {
+    "case_id": "case_004",
+    "title": "Token claim hijack via missing caller-authorization binding",
+    "category": "withdrawal_claim_logic_flaw",
+    "severity": "high",
+    "contract_file": "contracts/case_004.sol",
+    "language": "solidity",
+    "public_reference": "https://github.com/sherlock-audit/2024-11-vvv-exchange-update-judging/issues/151",
+    "task_prompt": "Determine whether claim authorization is bound to the actual caller or can be frontrun by another address.",
+    "ground_truth": {
+      "vulnerability_exists": true,
+      "vulnerability_type": "claim_hijacking_missing_caller_validation",
+      "affected_functions": [
+        "claim"
+      ],
+      "root_cause": "Signature proves authorization for kycAddress, but transfer destination uses msg.sender without requiring msg.sender == kycAddress.",
+      "exploit_path": "Attacker copies victim claim tx from mempool, submits same signed payload first, receives tokens, and consumes nonce.",
+      "impact": "Authorized claimant loses tokens while nonce is burned.",
+      "severity_rationale": "Single frontrunnable call lets attacker steal claimable distribution and deny legitimate redemption.",
+      "recommended_fix": "Require msg.sender == kycAddress (or transfer to kycAddress) and bind nonce consumption to the intended recipient with replay protection."
+    },
+    "tags": [
+      "claim",
+      "frontrun",
+      "authorization-binding"
+    ]
+  },
+  {
+    "case_id": "case_005",
+    "title": "One-time claim gate blocks future epoch rewards",
+    "category": "accounting_invariant",
+    "severity": "high",
+    "contract_file": "contracts/case_005.sol",
+    "language": "solidity",
+    "public_reference": "Minimized reconstruction based on public finding: https://github.com/sherlock-audit/2024-10-gamma-rewarder-judging/issues/74",
+    "task_prompt": "Check whether reward claims across multiple epochs can be completed or become permanently blocked after first claim.",
+    "ground_truth": {
+      "vulnerability_exists": true,
+      "vulnerability_type": "state_gate_blocks_multi_epoch_claims",
+      "affected_functions": [
+        "handleProofResult"
+      ],
+      "root_cause": "Function uses claim.amount == 0 as a one-time gate, preventing later epoch claims once any claim has been recorded.",
+      "exploit_path": "User claims once in early epoch; subsequent valid proofs revert due to one-time gate despite remaining rewards.",
+      "impact": "Users cannot access full entitled rewards across epochs.",
+      "severity_rationale": "Protocol-level accounting mismatch permanently denies claimable rewards for valid participants.",
+      "recommended_fix": "Track claimed amounts per epoch or cumulative entitlement deltas instead of a single one-time gate flag."
+    },
+    "tags": [
+      "rewards",
+      "epoch",
+      "state-machine"
+    ]
+  },
+  {
+    "case_id": "case_006",
+    "title": "Exact-balance assumption breaks fee-on-transfer allocation",
+    "category": "broken_assumption_invariant_mismatch",
+    "severity": "medium",
+    "contract_file": "contracts/case_006.sol",
+    "language": "solidity",
+    "public_reference": "Sanitized variant based on public finding: https://github.com/sherlock-audit/2024-06-boost-aa-wallet-judging/issues/52",
+    "task_prompt": "Assess whether token accounting assumes full transfer amount and fails for fee-on-transfer ERC20 tokens.",
+    "ground_truth": {
+      "vulnerability_exists": true,
+      "vulnerability_type": "fee_on_transfer_incompatibility",
+      "affected_functions": [
+        "allocate"
+      ],
+      "root_cause": "Post-transfer invariant requires exact balance delta == requested amount, which is false for fee-on-transfer tokens.",
+      "exploit_path": "Caller uses fee-on-transfer token; safeTransferFrom credits less than payload amount; strict balance check reverts.",
+      "impact": "Allocations fail for supported-looking tokens, causing operational DoS for those assets.",
+      "severity_rationale": "Medium because funds are not directly stolen, but protocol functionality fails for a realistic token class.",
+      "recommended_fix": "Use actual received amount for accounting or explicitly reject fee-on-transfer tokens with clear checks/documentation."
+    },
+    "tags": [
+      "erc20",
+      "fee-on-transfer",
+      "invariant-mismatch"
+    ]
+  },
+  {
+    "case_id": "case_007",
+    "title": "Refund path forgets to release locked ETH accounting",
+    "category": "accounting_invariant",
+    "severity": "high",
+    "contract_file": "contracts/case_007.sol",
+    "language": "solidity",
+    "public_reference": "Minimized reconstruction based on public finding: https://github.com/sherlock-audit/2024-08-winnables-raffles-judging/issues/47",
+    "task_prompt": "Check if refund logic updates locked-funds accounting consistently with outgoing ETH transfers.",
+    "ground_truth": {
+      "vulnerability_exists": true,
+      "vulnerability_type": "locked_funds_accounting_not_decremented",
+      "affected_functions": [
+        "buyTickets",
+        "refundPlayers"
+      ],
+      "root_cause": "Locked ETH counter is incremented during purchase but not decremented during refunds.",
+      "exploit_path": "Repeated refund cycles leave stale locked accounting, eventually making available balance appear lower than real transferable ETH.",
+      "impact": "ETH becomes effectively stranded by incorrect internal accounting.",
+      "severity_rationale": "Core treasury/accounting path drifts over time and can lock owner-usable funds.",
+      "recommended_fix": "Decrement locked accounting by refunded amount inside refund path before/with transfer effects."
+    },
+    "tags": [
+      "refund",
+      "eth-accounting",
+      "locked-funds"
+    ]
+  },
+  {
+    "case_id": "case_008",
+    "title": "Unrestricted setter execution resets multisig approval progress",
+    "category": "incorrect_authorization_privilege_boundary",
+    "severity": "medium",
+    "contract_file": "contracts/case_008.sol",
+    "language": "solidity",
+    "public_reference": "https://github.com/sherlock-audit/2024-11-autonomint-judging/issues/226",
+    "task_prompt": "Determine whether a privileged setter execution path can be called by arbitrary users and disrupt approval state.",
+    "ground_truth": {
+      "vulnerability_exists": true,
+      "vulnerability_type": "missing_access_control_on_privileged_execution",
+      "affected_functions": [
+        "executeSetterFunction"
+      ],
+      "root_cause": "Privileged execution function lacks owner-only guard and mutates shared approval state.",
+      "exploit_path": "Any address calls executeSetterFunction after partial approvals and clears progress, forcing owners to restart approvals.",
+      "impact": "Unauthorized users can grief governance operations and delay critical parameter updates.",
+      "severity_rationale": "Medium due to denial-of-operation and governance disruption without direct fund theft in minimal variant.",
+      "recommended_fix": "Restrict executeSetterFunction to approved owner set and separate approval reset from externally callable paths."
+    },
+    "tags": [
+      "multisig",
+      "access-control",
+      "griefing"
     ]
   }
 ]
